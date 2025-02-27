@@ -2,34 +2,40 @@ const Product = require('../models/product');
 const Cart = require('../models/cart');
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll(products => {
-    res.render('shop/product-list', {
-      prods: products,
-      pageTitle: 'All Products',
-      path: '/products'
-    });
-  });
+  Product.fetchAll()
+    .then(([rows, fieldData]) => {
+      res.render('shop/product-list', {
+        prods: rows,
+        pageTitle: 'All Products',
+        path: '/products'
+      });
+    })
+    .catch(err => console.log(err));
 };
 
 exports.getProduct = (req, res, next) => {
   const prodId = req.params.productId;
-  Product.findById(prodId, product => {
-    res.render('shop/product-detail', {
-      product: product,
-      pageTitle: product.title,
-      path: '/products'
-    });
-  });
+  Product.findById(prodId)
+    .then(([product]) => {
+      res.render('shop/product-detail', {
+        product: product[0],
+        pageTitle: product[0].title,
+        path: '/products'
+      });
+    })
+    .catch(err => console.log(err));
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.fetchAll(products => {
-    res.render('shop/index', {
-      prods: products,
-      pageTitle: 'Shop',
-      path: '/'
-    });
-  });
+  Product.fetchAll()
+    .then(([rows, fieldData]) => {
+      res.render('shop/index', {
+        prods: rows,
+        pageTitle: 'Shop',
+        path: '/'
+      });
+    })
+    .catch(err => console.log(err));
 };
 
 exports.getCart = (req, res, next) => {
@@ -81,4 +87,33 @@ exports.getCheckout = (req, res, next) => {
     path: '/checkout',
     pageTitle: 'Checkout'
   });
+};
+
+exports.postDeleteProduct = (req, res, next) => {
+  let prodId = req.body.productId;
+
+  if (!prodId) {
+    console.log('Product ID is missing');
+    return res.redirect('/products');
+  }
+
+  prodId = parseInt(prodId, 10); 
+  if (isNaN(prodId)) {
+    console.log('Invalid Product ID:', req.body.productId);
+    return res.redirect('/products');
+  }
+
+  Product.findById(prodId)
+    .then(([product]) => {
+      if (product.length > 0) {
+        return Cart.deleteProduct(prodId, product[0].price);
+      }
+    })
+    .then(() => {
+      return Product.deleteById(prodId);
+    })
+    .then(() => {
+      res.redirect('/products');
+    })
+    .catch(err => console.log(err));
 };
